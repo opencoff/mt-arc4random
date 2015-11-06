@@ -51,7 +51,7 @@ static const char sigma[16] = "expand 32-byte k";
 static const char tau[16] = "expand 16-byte k";
 
 static void
-chacha_keysetup(zz_chacha_ctx *x,const u8 *k,u32 kbits,u32 ivbits)
+chacha_keysetup(chacha_ctx *x,const u8 *k,u32 kbits,u32 ivbits)
 {
     const char *constants;
 
@@ -78,7 +78,7 @@ chacha_keysetup(zz_chacha_ctx *x,const u8 *k,u32 kbits,u32 ivbits)
 }
 
 static void
-chacha_ivsetup(zz_chacha_ctx *x,const u8 *iv)
+chacha_ivsetup(chacha_ctx *x,const u8 *iv)
 {
   x->input[12] = 0;
   x->input[13] = 0;
@@ -87,7 +87,7 @@ chacha_ivsetup(zz_chacha_ctx *x,const u8 *iv)
 }
 
 static void
-chacha_encrypt_bytes(zz_chacha_ctx *x,const u8 *m,u8 *c,u32 bytes)
+chacha_encrypt_bytes(chacha_ctx *x,const u8 *m,u8 *c,u32 bytes)
 {
   u32 x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15;
   u32 j0, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14, j15;

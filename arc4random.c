@@ -46,17 +46,17 @@
 typedef struct
 {
     uint32_t input[16]; /* could be compressed */
-} zz_chacha_ctx;
+} chacha_ctx;
 
-struct zzrand_state
+struct rand_state
 {
     size_t          rs_have;    /* valid bytes at end of rs_buf */
     size_t          rs_count;   /* bytes till reseed */
     pid_t           rs_pid;     /* My PID */
-    zz_chacha_ctx   rs_chacha;  /* chacha context for random keystream */
+    chacha_ctx   rs_chacha;  /* chacha context for random keystream */
     u_char          rs_buf[ARC4R_RSBUFSZ];  /* keystream blocks */
 };
-typedef struct zzrand_state zzrand_state;
+typedef struct rand_state rand_state;
 
 
 
@@ -69,7 +69,7 @@ typedef struct zzrand_state zzrand_state;
 
 
 static inline void
-_rs_init(zzrand_state* st, u8 *buf, size_t n)
+_rs_init(rand_state* st, u8 *buf, size_t n)
 {
     assert(n >= (ARC4R_KEYSZ + ARC4R_IVSZ));
 
@@ -81,7 +81,7 @@ _rs_init(zzrand_state* st, u8 *buf, size_t n)
 
 
 static inline void
-_rs_rekey(zzrand_state* st, u8 *dat, size_t datlen)
+_rs_rekey(rand_state* st, u8 *dat, size_t datlen)
 {
     /* fill rs_buf with the keystream */
     chacha_encrypt_bytes(&st->rs_chacha, st->rs_buf, st->rs_buf, sizeof st->rs_buf);
@@ -105,7 +105,7 @@ _rs_rekey(zzrand_state* st, u8 *dat, size_t datlen)
 
 
 static void
-_rs_stir(zzrand_state* st)
+_rs_stir(rand_state* st)
 {
     u8 rnd[ARC4R_KEYSZ + ARC4R_IVSZ];
 
@@ -129,7 +129,7 @@ _rs_stir(zzrand_state* st)
 
 
 static inline void
-_rs_stir_if_needed(zzrand_state* st, size_t len)
+_rs_stir_if_needed(rand_state* st, size_t len)
 {
     if (st->rs_count <= len)
         _rs_stir(st);
@@ -139,7 +139,7 @@ _rs_stir_if_needed(zzrand_state* st, size_t len)
 
 
 static inline void
-_rs_random_buf(zzrand_state* rs, void *_buf, size_t n)
+_rs_random_buf(rand_state* rs, void *_buf, size_t n)
 {
     u8 *buf = (u8 *)_buf;
     u8 *keystream;
@@ -161,7 +161,7 @@ _rs_random_buf(zzrand_state* rs, void *_buf, size_t n)
 }
 
 static inline uint32_t
-_rs_random_u32(zzrand_state* rs)
+_rs_random_u32(rand_state* rs)
 {
     u8 *keystream;
     uint32_t val;
@@ -205,7 +205,7 @@ atfork()
  * create the thread-specific key.
  */
 static void
-zcreate()
+screate()
 {
     pthread_key_create(&Rkey, 0);
     pthread_atfork(0, 0, atfork);
@@ -215,15 +215,15 @@ zcreate()
 /*
  * Get the per-thread rand state. Initialize if needed.
  */
-static zzrand_state*
-zinit()
+static rand_state*
+sget()
 {
-    pthread_once(&Ronce, zcreate);
+    pthread_once(&Ronce, screate);
 
     volatile pthread_key_t* k = &Rkey;
-    zzrand_state * z = (zzrand_state *)pthread_getspecific(*k);
+    rand_state * z = (rand_state *)pthread_getspecific(*k);
     if (!z) {
-        z = (zzrand_state*)calloc(sizeof *z, 1);
+        z = (rand_state*)calloc(sizeof *z, 1);
         assert(z);
 
         _rs_stir(z);
@@ -244,23 +244,45 @@ zinit()
 
 
 /*
- * Public API
+ * Public API.
  */
 
 
+/*
+ * On OpenBSD - we should NOT use the same symbol names. OpenBSD
+ * libc defines these, and the rest of libc uses this - from dynamic
+ * loading, to malloc() to printf() etc.
+ *
+ * For some fun, don't redefine the names - and see what happens :-)
+ */
+#ifdef __OpenBSD__
+
+#define ARC4RANDOM          mt_arc4random
+#define ARC4RANDOM_UNIFORM  mt_arc4random_uniform
+#define ARC4RANDOM_BUF      mt_arc4random_buf
+
+#else
+
+#define ARC4RANDOM          arc4random
+#define ARC4RANDOM_UNIFORM  arc4random_uniform
+#define ARC4RANDOM_BUF      arc4random_buf
+
+#endif /* __OpenBSD__ */
+
+
 uint32_t
-arc4random()
+ARC4RANDOM()
 {
-    zzrand_state* z = zinit();
+    rand_state* z = sget();
 
     return _rs_random_u32(z);
 }
 
 
 void
-arc4random_buf(void* b, size_t n)
+ARC4RANDOM_BUF(void* b, size_t n)
 {
-    zzrand_state* z = zinit();
+    rand_state* z = sget();
 
     _rs_random_buf(z, b, n);
 }
@@ -279,9 +301,9 @@ arc4random_buf(void* b, size_t n)
  * after reduction modulo upper_bound.
  */
 uint32_t
-arc4random_uniform(uint32_t upper_bound)
+ARC4RANDOM_UNIFORM(uint32_t upper_bound)
 {
-    zzrand_state* z = zinit();
+    rand_state* z = sget();
     uint32_t r, min;
 
     if (upper_bound < 2)
