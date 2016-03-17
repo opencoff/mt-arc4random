@@ -3,6 +3,16 @@ This is a thread-Aware, thread-safe version of OpenBSD arc4random (chacha20 base
 I cleaned it up and made it portable to all POSIX like OSes. It
 builds cleanly on OS X, Linux and all BSDs.
 
+## RFC 4122 UUID Generation
+There is a short implementatin of RFC 4122
+Random number based UUID generation in randuuid.c. This 
+uses the underlying `arc4random()` implementation. The
+signature for that function is simple enough
+`void randuuid(uint8_t* buf, size_t n)`. 
+
+### Java bindings 
+The UUID generator has a JNI binding specified in the java/
+directory.
 
 ## How is it Thread Aware?
 First, I converted every internal function to accept a context

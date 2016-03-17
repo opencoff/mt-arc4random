@@ -20,7 +20,31 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdint.h>
-#include "error.h"
+#include <stdarg.h>
+#include <string.h>
+#include <stdlib.h>
+
+static void
+error(int doexit, int err, const char* fmt, ...)
+{
+    va_list ap;
+
+    fflush(stdout);
+    fflush(stderr);
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+
+    if (err > 0)
+        fprintf(stderr, "\n  %s (Errno %d)\n", strerror(err), err);
+
+    if (doexit) {
+        fflush(stderr);
+        exit(1);
+    }
+}
+
+
 
 static int
 randopen(const char* name)
@@ -37,8 +61,11 @@ randopen(const char* name)
 void*
 sys_entropy(void* buf, size_t n)
 {
-    uint8_t* b = (uint8_t*)buf;
-    int fd     = randopen("/dev/random");
+    static int fd = -1;
+    uint8_t* b    = (uint8_t*)buf;
+
+    if (fd < 0)
+        fd = randopen("/dev/urandom");
 
     while (n > 0)
     {
@@ -52,7 +79,6 @@ sys_entropy(void* buf, size_t n)
         n -= m;
     }
 
-    close(fd);
     return buf;
 }
 

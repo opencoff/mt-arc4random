@@ -133,8 +133,8 @@ _rs_stir_if_needed(rand_state* st, size_t len)
 {
     if (st->rs_count <= len)
         _rs_stir(st);
-    else
-        st->rs_count -= len;
+
+    st->rs_count -= len;
 }
 
 
