@@ -46,7 +46,9 @@ bench(int fd, size_t siz, size_t niter)
     double sa = aa / _d(siz);           // cycles/byte for arc4random
     double ss = as / _d(siz);           // cycles/byte for sysrand
 
-    printf("%6lu, %9.4f %9.4f\n", siz, sa, ss);
+    double speedup = ss / sa;
+
+    printf("%6lu, %9.4f,\t%9.4f,\t%6.2f\n", siz, sa, ss, speedup);
 
     free(buf);
 }
@@ -66,7 +68,7 @@ main(int argc, const char** argv)
         if (fd < 0) error(1, errno, "Can't open dev/urandom");
 
 
-        printf("size,      arc4rand cy/byte,   sysrand cy/byte\n");
+        printf("size,      arc4rand,\tsysrand,\tspeed-up\n");
         for (i = 1; i < argc; ++i) {
             int z = atoi(argv[i]);
             if (z <= 0) continue;
