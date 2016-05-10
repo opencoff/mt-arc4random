@@ -76,7 +76,6 @@ _rs_init(rand_state* st, u8 *buf, size_t n)
 
     chacha_keysetup(&st->rs_chacha, buf, ARC4R_KEYSZ * 8, 0);
     chacha_ivsetup(&st->rs_chacha,  buf + ARC4R_KEYSZ);
-    memset(buf, 0x55, ARC4R_KEYSZ + ARC4R_IVSZ);
 }
 
 
@@ -120,8 +119,6 @@ _rs_stir(rand_state* st)
     /* invalidate rs_buf */
     st->rs_have = 0;
     memset(st->rs_buf, 0, sizeof st->rs_buf);
-
-    _rs_rekey(st, 0, 0);
 
     st->rs_count = 1600000;
 }
