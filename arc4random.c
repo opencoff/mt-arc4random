@@ -228,7 +228,8 @@ sget()
     }
 
     /* Detect if a fork has happened */
-    if (__sync_fetch_and_sub(&Rforked, 1) > 0 || getpid() != z->rs_pid) {
+    if (Rforked > 0 || getpid() != z->rs_pid) {
+        __sync_fetch_and_sub(&Rforked, 1);
         z->rs_pid = getpid();
         _rs_stir(z);
     }
