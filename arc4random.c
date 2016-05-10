@@ -181,9 +181,9 @@ _rs_random_u32(rand_state* rs)
  * annotated with the gcc "__thread" attribute. This avoids a
  * potentially failure prone run-time memory allocation.
  */
-static pthread_key_t  Rkey;
-static pthread_once_t Ronce   = PTHREAD_ONCE_INIT;
-static uint32_t       Rforked = 0;
+static pthread_key_t     Rkey;
+static pthread_once_t    Ronce   = PTHREAD_ONCE_INIT;
+static volatile uint32_t Rforked = 0;
 
 /*
  * Fork handler to reset my context
@@ -191,8 +191,8 @@ static uint32_t       Rforked = 0;
 static void
 atfork()
 {
-    // XXX GCC Intrinsyc
-    __sync_fetch_and_add(&Rforked, 1);
+    // the pthread_atfork() callbacks called once per process.
+    Rforked++;
 }
 
 /*
@@ -229,7 +229,7 @@ sget()
 
     /* Detect if a fork has happened */
     if (Rforked > 0 || getpid() != z->rs_pid) {
-        __sync_fetch_and_sub(&Rforked, 1);
+        Rforked = 0;
         z->rs_pid = getpid();
         _rs_stir(z);
     }

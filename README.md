@@ -1,7 +1,8 @@
 # mt-arc4random
 This is a thread-Aware, thread-safe version of OpenBSD arc4random (chacha20 based).
 I cleaned it up and made it portable to all POSIX like OSes. It
-builds cleanly on OS X, Linux and all BSDs.
+builds cleanly on OS X, Linux and OpenBSD. In theory, it should just
+work on any modern Unix.
 
 
 ## How is it Thread Aware?
@@ -16,8 +17,9 @@ context before calling any internal functions.
 
 ## How do you provide entropy (seed) in a portable way?
 This implementation uses an "external" function named
-`sys_entropy()`. I have provided an implementation for POSIX systems
-via use of `/dev/random`.
+`getentropy()`. On OpenBSD, this is a syscall. 
+I have provided an implementation of `getentropy()` for POSIX systems
+via `/dev/urandom`.
 
 ## Building and Using this
 Using this is very simple:
@@ -25,7 +27,9 @@ Using this is very simple:
 * If you are on OpenBSD:
 
    - Include the supplied `arc4random.h` in every place where you expect
-     to call `arc4random()`
+     to call `arc4random()`. This is *mandatory* - otherwise, you
+     will have a fun time debugging crashes.
+
    - Add `arc4random.c` to your build.
 
 * If you are any Unix like platform:
@@ -36,8 +40,41 @@ Using this is very simple:
    - Include the supplied `arc4random.h` in every place where you expect
      to call `arc4random()`
 
-* Use the well-known OpenBSD APIs - `arc4random()` and
+* Use the well-known APIs - `arc4random()` and
   `arc4random_buf()` as you always do.
+
+## Testing and Performance
+
+There's a small benchmark program called `t_arcrand`; to build it
+just run `make`. It should work on any modern Unix. Tested on
+OpenBSD, Linux, OS X Darwin.
+
+When run on a retina MacBook Pro 13” (2013) running OS X Yosemite:
+
+    ./t_arc4rand 16 32 64 256 512
+    size,      arc4rand,	sysrand,	speed-up
+        16,   12.2966,	 	279.9628,	 22.77
+        32,   11.3687,	 	268.2029,	 23.59
+        64,    9.9161,	 	238.8743,	 24.09
+       256,    9.3164,	 	217.1194,	 23.30
+       512,    8.3054,	 	204.1270,	 24.58
+
+
+The results show the CPU cycles consumed by `arc4random_buf()` to
+generate "n" bytes of random data. The third column labeled
+`sysrand` is the CPU cycles consumed by reading from `/dev/urandom`.
+And the last column is the relative speedup between the two.
+
+On debian Linux (sid) x86_64 on a Core-i7 Laptop running the
+Linux 4.5 kernel, I see:
+
+    ./t_arc4rand 16 32 64 256 512
+    size,      arc4rand,	sysrand,	speed-up
+        16,    9.6997,	 	255.6211,	 26.35
+        32,    7.9821,	 	251.2072,	 31.47
+        64,    7.5916,	 	220.8430,	 29.09
+       256,    7.4764,	 	206.5079,	 27.62
+       512,    7.2225,	 	201.9913,	 27.97
 
 
 ## RFC 4122 UUID Generation
