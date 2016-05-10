@@ -53,7 +53,7 @@ struct rand_state
     size_t          rs_have;    /* valid bytes at end of rs_buf */
     size_t          rs_count;   /* bytes till reseed */
     pid_t           rs_pid;     /* My PID */
-    chacha_ctx   rs_chacha;  /* chacha context for random keystream */
+    chacha_ctx      rs_chacha;  /* chacha context for random keystream */
     u_char          rs_buf[ARC4R_RSBUFSZ];  /* keystream blocks */
 };
 typedef struct rand_state rand_state;
@@ -65,6 +65,7 @@ typedef struct rand_state rand_state;
 
 #define minimum(a, b) ((a) < (b) ? (a) : (b))
 
+#include "arc4random.h"
 
 
 
@@ -109,12 +110,10 @@ _rs_stir(rand_state* st)
 {
     u8 rnd[ARC4R_KEYSZ + ARC4R_IVSZ];
 
-    /*
-     * The platform should provide this API to get entropy.
-     */
-    extern void* sys_entropy(void*, size_t);
+    extern int getentropy(void*, size_t);
 
-    sys_entropy(rnd, sizeof rnd);
+    int r = getentropy(rnd, sizeof rnd);
+    assert(r == 0);
 
     _rs_rekey(st, rnd, sizeof(rnd));
 
@@ -248,30 +247,9 @@ sget()
  */
 
 
-/*
- * On OpenBSD - we should NOT use the same symbol names. OpenBSD
- * libc defines these, and the rest of libc uses this - from dynamic
- * loading, to malloc() to printf() etc.
- *
- * For some fun, don't redefine the names - and see what happens :-)
- */
-#ifdef __OpenBSD__
-
-#define ARC4RANDOM          mt_arc4random
-#define ARC4RANDOM_UNIFORM  mt_arc4random_uniform
-#define ARC4RANDOM_BUF      mt_arc4random_buf
-
-#else
-
-#define ARC4RANDOM          arc4random
-#define ARC4RANDOM_UNIFORM  arc4random_uniform
-#define ARC4RANDOM_BUF      arc4random_buf
-
-#endif /* __OpenBSD__ */
-
 
 uint32_t
-ARC4RANDOM()
+arc4random()
 {
     rand_state* z = sget();
 
@@ -280,7 +258,7 @@ ARC4RANDOM()
 
 
 void
-ARC4RANDOM_BUF(void* b, size_t n)
+arc4random_buf(void* b, size_t n)
 {
     rand_state* z = sget();
 
@@ -301,7 +279,7 @@ ARC4RANDOM_BUF(void* b, size_t n)
  * after reduction modulo upper_bound.
  */
 uint32_t
-ARC4RANDOM_UNIFORM(uint32_t upper_bound)
+arc4random_uniform(uint32_t upper_bound)
 {
     rand_state* z = sget();
     uint32_t r, min;

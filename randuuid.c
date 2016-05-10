@@ -17,21 +17,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef __OpenBSD__
-
-#define ARC4RANDOM          mt_arc4random
-#define ARC4RANDOM_UNIFORM  mt_arc4random_uniform
-#define ARC4RANDOM_BUF      mt_arc4random_buf
-
-#else
-
-#define ARC4RANDOM          arc4random
-#define ARC4RANDOM_UNIFORM  arc4random_uniform
-#define ARC4RANDOM_BUF      arc4random_buf
-
-#endif /* __OpenBSD__ */
-
-extern void ARC4RANDOM_BUF(void* b, size_t n);
+#include "arc4random.h"
 
 
 /*
@@ -44,7 +30,7 @@ randuuid(uint8_t* b, size_t n)
 {
     if (n > 16) n = 16;
 
-    ARC4RANDOM_BUF(b, n);
+    arc4random_buf(b, n);
     if (n > 8) {
 
         /*

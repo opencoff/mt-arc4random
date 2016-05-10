@@ -58,8 +58,8 @@ randopen(const char* name)
 }
 
 
-void*
-sys_entropy(void* buf, size_t n)
+int
+getentropy(void* buf, size_t n)
 {
     static int fd = -1;
     uint8_t* b    = (uint8_t*)buf;
@@ -79,7 +79,7 @@ sys_entropy(void* buf, size_t n)
         n -= m;
     }
 
-    return buf;
+    return 0;
 }
 
 
