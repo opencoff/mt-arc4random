@@ -68,7 +68,6 @@ typedef struct rand_state rand_state;
 #include "arc4random.h"
 
 
-
 static inline void
 _rs_init(rand_state* st, u8 *buf, size_t n)
 {
@@ -229,8 +228,7 @@ sget()
     }
 
     /* Detect if a fork has happened */
-    if (Rforked > 0 || getpid() != z->rs_pid) {
-        __sync_fetch_and_sub(&Rforked, 1);
+    if (__sync_fetch_and_sub(&Rforked, 1) > 0 || getpid() != z->rs_pid) {
         z->rs_pid = getpid();
         _rs_stir(z);
     }
