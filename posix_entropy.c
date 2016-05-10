@@ -24,7 +24,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-static void
+void
 error(int doexit, int err, const char* fmt, ...)
 {
     va_list ap;
