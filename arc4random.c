@@ -59,6 +59,9 @@ struct rand_state
 typedef struct rand_state rand_state;
 
 
+/* kernel entropy */
+extern int getentropy(void* buf, size_t n);
+
 
 #define KEYSTREAM_ONLY
 #include "chacha_private.h"
@@ -108,7 +111,6 @@ _rs_stir(rand_state* st)
 {
     u8 rnd[ARC4R_KEYSZ + ARC4R_IVSZ];
 
-    extern int getentropy(void*, size_t);
 
     int r = getentropy(rnd, sizeof rnd);
     assert(r == 0);
@@ -173,13 +175,12 @@ _rs_random_u32(rand_state* rs)
 }
 
 
+#if defined(__Darwin__) || defined(__APPLE__)
 
 /*
- * Multi-threaded support using pthread API.
+ * Multi-threaded support using pthread API. Needed for OS X:
  *
- * XXX It may be better to use function-local static variable
- * annotated with the gcc "__thread" attribute. This avoids a
- * potentially failure prone run-time memory allocation.
+ *   https://www.reddit.com/r/cpp/comments/3bg8jc/anyone_know_if_and_when_applexcode_will_support/
  */
 static pthread_key_t     Rkey;
 static pthread_once_t    Ronce   = PTHREAD_ONCE_INIT;
@@ -192,6 +193,7 @@ static void
 atfork()
 {
     // the pthread_atfork() callbacks called once per process.
+    // We set it to be called by the child process.
     Rforked++;
 }
 
@@ -204,6 +206,13 @@ screate()
 {
     pthread_key_create(&Rkey, 0);
     pthread_atfork(0, 0, atfork);
+
+    /*
+     * Get entropy once to initialize the fd - for non OpenBSD
+     * systems.
+     */
+    uint8_t buf[8];
+    getentropy(buf, sizeof buf);
 }
 
 
@@ -229,13 +238,37 @@ sget()
 
     /* Detect if a fork has happened */
     if (Rforked > 0 || getpid() != z->rs_pid) {
-        Rforked = 0;
+        Rforked   = 0;
         z->rs_pid = getpid();
         _rs_stir(z);
     }
 
     return z;
 }
+
+#else
+
+/*
+ * Use gcc extension to declare a thread-local variable.
+ *
+ * On most systems (including x86_64), thread-local access is
+ * essentially free for non .so use cases.
+ *
+ */
+static __thread rand_state st = { .rs_count = 0, .rs_pid = 0 };
+static inline rand_state*
+sget()
+{
+    rand_state* s = &st;
+
+    if (s->rs_count == 0 || getpid() != s->rs_pid) {
+        _rs_stir(s);
+        s->rs_pid = getpid();
+    }
+    return s;
+}
+
+#endif /* __Darwin__ */
 
 
 /*
